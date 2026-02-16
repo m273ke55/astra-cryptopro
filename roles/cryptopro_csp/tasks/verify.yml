@@ -1,0 +1,23 @@
+---
+- name: Check installed CryptoPro packages via dpkg
+  ansible.builtin.shell: |
+    dpkg -l | awk '/^ii\s+cprocsp/{print $2}'
+  args:
+    executable: /bin/bash
+  register: cryptopro_installed_packages
+  changed_when: false
+  failed_when: cryptopro_installed_packages.stdout_lines | length == 0
+
+- name: Verify cpconfig utility availability
+  ansible.builtin.command:
+    cmd: /opt/cprocsp/sbin/cpconfig -help
+  register: cryptopro_cpconfig_help
+  changed_when: false
+
+- name: Optionally check license status
+  ansible.builtin.command:
+    cmd: /opt/cprocsp/sbin/cpconfig -license -view
+  register: cryptopro_license_view
+  changed_when: false
+  failed_when: false
+  when: cryptopro_license_check

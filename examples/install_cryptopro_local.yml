@@ -1,0 +1,9 @@
+---
+- name: Install and configure CryptoPro CSP on localhost
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: astra.cryptopro.cryptopro_csp

@@ -1,0 +1,22 @@
+---
+- name: Manage system profile PATH for CryptoPro utilities
+  ansible.builtin.template:
+    src: cryptopro.sh.j2
+    dest: "{{ cryptopro_profiled_path_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: cryptopro_profiled_path_enable
+
+- name: Remove system profile PATH file when disabled
+  ansible.builtin.file:
+    path: "{{ cryptopro_profiled_path_file }}"
+    state: absent
+  when: not cryptopro_profiled_path_enable
+
+- name: Ensure pcscd service is enabled and started
+  ansible.builtin.systemd:
+    name: pcscd
+    enabled: true
+    state: started
+  when: cryptopro_enable_pcscd

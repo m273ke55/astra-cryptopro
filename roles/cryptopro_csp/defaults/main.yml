@@ -1,0 +1,14 @@
+---
+cryptopro_archive_local: "artifacts/linux-amd64_deb.tgz"
+cryptopro_remote_dir: "/var/tmp/cryptopro"
+cryptopro_install_script: "install.sh"
+cryptopro_install_args: ""
+cryptopro_force_reinstall: false
+cryptopro_enable_pcscd: true
+cryptopro_install_libgost_astra: true
+cryptopro_profiled_path_enable: true
+cryptopro_profiled_path_file: "/etc/profile.d/cryptopro.sh"
+cryptopro_paths:
+  - "/opt/cprocsp/bin"
+  - "/opt/cprocsp/sbin"
+cryptopro_license_check: true

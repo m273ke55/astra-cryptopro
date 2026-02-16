@@ -1,0 +1,7 @@
+# Ansible managed: CryptoPro CSP PATH settings
+{% for path_item in cryptopro_paths %}
+if ! echo ":$PATH:" | /bin/grep -q ":{{ path_item }}:"; then
+  PATH="{{ path_item }}:${PATH}"
+fi
+{% endfor %}
+export PATH
