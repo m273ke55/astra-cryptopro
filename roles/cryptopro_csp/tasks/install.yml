@@ -1,0 +1,108 @@
+---
+# roles/cryptopro_csp/tasks/install.yml
+
+- name: Resolve local archive path
+  ansible.builtin.set_fact:
+    cryptopro_archive_source: >-
+      {{
+        cryptopro_csp_archive_local
+        if (cryptopro_csp_archive_local is match('^/'))
+        else (role_path + '/../../' + cryptopro_csp_archive_local)
+      }}
+
+- name: Check CryptoPro archive presence on controller
+  ansible.builtin.stat:
+    path: "{{ cryptopro_archive_source }}"
+  delegate_to: localhost
+  become: false
+  register: cryptopro_archive_stat
+
+- name: Fail when archive is missing
+  ansible.builtin.fail:
+    msg: >-
+      Архив КриптоПро CSP не найден: {{ cryptopro_archive_source }}.
+      Поместите TGZ-архив в artifacts/ или переопределите cryptopro_csp_archive_local.
+  when: not cryptopro_archive_stat.stat.exists
+
+- name: Install required smartcard packages
+  ansible.builtin.apt:
+    name:
+      - pcscd
+      - libccid
+    state: present
+    update_cache: true
+
+- name: Install libgost-astra package when requested
+  ansible.builtin.apt:
+    name: libgost-astra
+    state: present
+  when: cryptopro_csp_install_libgost_astra
+
+- name: Ensure temporary CryptoPro directory exists
+  ansible.builtin.file:
+    path: "{{ cryptopro_csp_remote_dir }}"
+    state: directory
+    mode: "0755"
+  check_mode: false
+
+- name: Unpack CryptoPro archive
+  ansible.builtin.unarchive:
+    src: "{{ cryptopro_archive_source }}"
+    dest: "{{ cryptopro_csp_remote_dir }}"
+    remote_src: false
+  check_mode: false
+
+- name: Locate installer script in unpacked archive
+  ansible.builtin.find:
+    paths: "{{ cryptopro_csp_remote_dir }}"
+    patterns: "{{ cryptopro_csp_install_script }}"
+    recurse: true
+    file_type: file
+  register: cryptopro_install_script_candidates
+
+- name: Fail when installer script was not found
+  ansible.builtin.fail:
+    msg: >-
+      Скрипт установки {{ cryptopro_csp_install_script }} не найден в {{ cryptopro_csp_remote_dir }}.
+      Проверьте содержимое архива и значение cryptopro_csp_install_script.
+  when: (cryptopro_install_script_candidates.matched | int) == 0
+
+- name: Select installer path
+  ansible.builtin.set_fact:
+    cryptopro_install_script_path: >-
+      {{
+        (cryptopro_install_script_candidates.files
+          | map(attribute='path') | list | sort | first)
+      }}
+
+- name: Detect cpconfig path (common locations)
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /opt/cprocsp/sbin/cpconfig
+    - /opt/cprocsp/sbin/amd64/cpconfig
+    - /opt/cprocsp/sbin/ia32/cpconfig
+    - /opt/cprocsp/bin/cpconfig
+  register: cryptopro_cpconfig_candidates
+
+- name: Select cpconfig path if present
+  ansible.builtin.set_fact:
+    cryptopro_cpconfig_path: >-
+      {{
+        (cryptopro_cpconfig_candidates.results
+          | selectattr('stat.exists', 'equalto', true)
+          | map(attribute='item')
+          | list
+          | first) | default('')
+      }}
+
+- name: Run CryptoPro installer
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['bash', cryptopro_install_script_path]
+        + (cryptopro_csp_install_args.split() if (cryptopro_csp_install_args | length > 0) else [])
+      }}
+    chdir: "{{ cryptopro_install_script_path | dirname }}"
+  when: cryptopro_csp_force_reinstall or (cryptopro_cpconfig_path | length == 0)
+  changed_when: true

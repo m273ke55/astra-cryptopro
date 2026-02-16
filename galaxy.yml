@@ -1,0 +1,23 @@
+namespace: astra
+name: cryptopro
+version: 1.0.0
+readme: README.md
+authors:
+  - Astra Automation Team
+description: >-
+  Ansible Collection for local installation and baseline configuration
+  of CryptoPro CSP on Astra Linux Special Edition.
+license:
+  - MIT
+tags:
+  - astra
+  - cryptopro
+  - csp
+  - security
+repository: https://example.invalid/astra/cryptopro
+issues: https://example.invalid/astra/cryptopro/issues
+build_ignore:
+  - .git
+  - .gitignore
+  - .venv
+  - artifacts/*.tgz

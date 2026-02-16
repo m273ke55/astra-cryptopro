@@ -1,0 +1,4 @@
+
+# Local dev artifacts
+.ansible/
+.vscode/

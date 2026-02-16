@@ -1,0 +1,12 @@
+---
+- name: Install and configure CryptoPro CSP on localhost
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    cryptopro_csp_archive_local: "/home/administrator/projects/astra-cryptopro/artifacts/linux-amd64_deb.tgz"
+
+  roles:
+    - role: astra.cryptopro.cryptopro_csp

@@ -1,0 +1,28 @@
+# /etc/profile.d/cryptopro.sh
+# Managed by Ansible (astra.cryptopro.cryptopro_csp). Do not edit.
+
+# CryptoPro base dir
+CRYPTOPRO_DIR="/opt/cprocsp"
+
+# Candidate paths for different layouts
+_CRYPTOPRO_PATHS="
+${CRYPTOPRO_DIR}/bin
+${CRYPTOPRO_DIR}/bin/amd64
+${CRYPTOPRO_DIR}/bin/ia32
+${CRYPTOPRO_DIR}/sbin
+${CRYPTOPRO_DIR}/sbin/amd64
+${CRYPTOPRO_DIR}/sbin/ia32
+"
+
+# Append only existing dirs and avoid duplicates in PATH
+for _d in ${_CRYPTOPRO_PATHS}; do
+  if [ -d "${_d}" ]; then
+    case ":${PATH}:" in
+      *":${_d}:"*) : ;;
+      *) PATH="${PATH}:${_d}" ;;
+    esac
+  fi
+done
+
+export PATH
+unset _d _CRYPTOPRO_PATHS CRYPTOPRO_DIR
