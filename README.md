@@ -1,4 +1,4 @@
-# astra.cryptopro
+# Коллекция Ansible для установки и базовой настройки КриптоПро CSP для Astra Automation
 
 Ansible Collection для установки и базовой настройки КриптоПро CSP на Astra Linux Special Edition (SE), базовый уровень защищенности.
 
