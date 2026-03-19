@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: Astra Automation Team
-  description: Install and baseline configure CryptoPro CSP from local TGZ archive.
+  description: Install and baseline configure CryptoPro CSP from a user-provided archive path or URL.
   company: Astra Linux
   license: MIT
   min_ansible_version: "2.14"

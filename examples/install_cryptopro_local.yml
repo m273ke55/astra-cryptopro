@@ -6,7 +6,8 @@
   gather_facts: true
 
   vars:
-    cryptopro_csp_archive_local: "/home/administrator/projects/astra-cryptopro/artifacts/linux-amd64_deb.tgz"
+    # Укажите путь к архиву, полученному самостоятельно с сайта CryptoPro.
+    cryptopro_csp_archive_path: "/path/to/linux-amd64_deb.tgz"
 
   roles:
     - role: astra.cryptopro.cryptopro_csp

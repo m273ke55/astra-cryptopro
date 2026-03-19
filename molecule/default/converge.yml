@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    cryptopro_csp_archive_path: "{{ lookup('env', 'CRYPTOPRO_CSP_ARCHIVE_PATH') }}"
+    cryptopro_csp_archive_url: "{{ lookup('env', 'CRYPTOPRO_CSP_ARCHIVE_URL') }}"
+    cryptopro_csp_archive_checksum: "{{ lookup('env', 'CRYPTOPRO_CSP_ARCHIVE_CHECKSUM') }}"
+    cryptopro_csp_download_validate_certs: >-
+      {{ lookup('env', 'CRYPTOPRO_CSP_DOWNLOAD_VALIDATE_CERTS') | default('true', true) | bool }}
+    cryptopro_csp_archive_headers: >-
+      {{ lookup('env', 'CRYPTOPRO_CSP_ARCHIVE_HEADERS') | default('{}', true) | from_yaml }}
+
+  roles:
+    - role: astra.cryptopro.cryptopro_csp

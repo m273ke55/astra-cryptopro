@@ -1,0 +1,98 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    cryptopro_csp_verify_license: >-
+      {{ lookup('env', 'CRYPTOPRO_CSP_VERIFY_LICENSE') | default('false', true) | bool }}
+
+  tasks:
+    - name: Check installed CryptoPro packages via dpkg
+      ansible.builtin.shell: |
+        set -o pipefail
+        dpkg -l | awk '/^ii\s+(lsb-cprocsp|cprocsp)/{print $2}'
+      args:
+        executable: /bin/bash
+      register: cryptopro_dpkg_list
+      changed_when: false
+
+    - name: Assert CryptoPro packages are installed
+      ansible.builtin.assert:
+        that:
+          - cryptopro_dpkg_list.stdout_lines | length > 0
+        fail_msg: >-
+          Пакеты CryptoPro CSP не обнаружены в dpkg -l.
+
+    - name: Detect cpconfig path (common locations)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /opt/cprocsp/sbin/cpconfig
+        - /opt/cprocsp/sbin/amd64/cpconfig
+        - /opt/cprocsp/sbin/ia32/cpconfig
+        - /opt/cprocsp/bin/cpconfig
+      register: cryptopro_cpconfig_candidates
+
+    - name: Select cpconfig path
+      ansible.builtin.set_fact:
+        cryptopro_cpconfig_path: >-
+          {{
+            (cryptopro_cpconfig_candidates.results
+              | selectattr('stat.exists', 'equalto', true)
+              | map(attribute='item')
+              | list
+              | first) | default('')
+          }}
+
+    - name: Assert cpconfig path exists
+      ansible.builtin.assert:
+        that:
+          - cryptopro_cpconfig_path | length > 0
+        fail_msg: cpconfig не найден в ожидаемых каталогах /opt/cprocsp.
+
+    - name: Verify cpconfig utility availability
+      ansible.builtin.command:
+        cmd: "{{ cryptopro_cpconfig_path }} -help"
+      register: cryptopro_cpconfig_help
+      changed_when: false
+
+    - name: Detect csptest path (common locations)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /opt/cprocsp/bin/csptest
+        - /opt/cprocsp/bin/amd64/csptest
+        - /opt/cprocsp/bin/ia32/csptest
+      register: cryptopro_csptest_candidates
+
+    - name: Select csptest path
+      ansible.builtin.set_fact:
+        cryptopro_csptest_path: >-
+          {{
+            (cryptopro_csptest_candidates.results
+              | selectattr('stat.exists', 'equalto', true)
+              | map(attribute='item')
+              | list
+              | first) | default('')
+          }}
+
+    - name: Assert csptest path exists
+      ansible.builtin.assert:
+        that:
+          - cryptopro_csptest_path | length > 0
+        fail_msg: csptest не найден в ожидаемых каталогах /opt/cprocsp.
+
+    - name: Run csptest enum info
+      ansible.builtin.command:
+        cmd: "{{ cryptopro_csptest_path }} -enum -info"
+      register: cryptopro_csptest_enum
+      changed_when: false
+
+    - name: Optionally check license status
+      ansible.builtin.command:
+        cmd: "{{ cryptopro_cpconfig_path }} -license -view"
+      register: cryptopro_license_view
+      changed_when: false
+      when: cryptopro_csp_verify_license | bool
