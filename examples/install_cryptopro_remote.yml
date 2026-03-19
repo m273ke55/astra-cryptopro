@@ -1,0 +1,8 @@
+---
+- name: Install and configure CryptoPro CSP on remote hosts
+  hosts: cryptopro_targets
+  become: true
+
+  roles:
+    - role: astra.cryptopro.cryptopro_csp
+    
