@@ -20,4 +20,3 @@ build_ignore:
   - .git
   - .gitignore
   - .venv
-  - artifacts/*.tgz

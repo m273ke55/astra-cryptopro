@@ -1,5 +1,10 @@
 ---
-cryptopro_csp_archive_local: "artifacts/linux-amd64_deb.tgz"
+cryptopro_csp_archive_path: ""
+cryptopro_csp_archive_url: ""
+cryptopro_csp_archive_checksum: ""
+cryptopro_csp_archive_headers: {}
+cryptopro_csp_download_validate_certs: true
+
 cryptopro_csp_remote_dir: "/var/tmp/cryptopro"
 cryptopro_csp_install_script: "install.sh"
 cryptopro_csp_install_args: ""
@@ -15,5 +20,3 @@ cryptopro_csp_paths:
   - "/opt/cprocsp/bin"
   - "/opt/cprocsp/sbin"
   - "/opt/cprocsp/sbin/amd64"
-
-cryptopro_csp_license_check: true

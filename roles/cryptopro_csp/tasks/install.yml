@@ -1,28 +1,115 @@
 ---
-# roles/cryptopro_csp/tasks/install.yml
-
-- name: Resolve local archive path
-  ansible.builtin.set_fact:
-    cryptopro_archive_source: >-
-      {{
-        cryptopro_csp_archive_local
-        if (cryptopro_csp_archive_local is match('^/'))
-        else (role_path + '/../../' + cryptopro_csp_archive_local)
-      }}
-
-- name: Check CryptoPro archive presence on controller
-  ansible.builtin.stat:
-    path: "{{ cryptopro_archive_source }}"
-  delegate_to: localhost
-  become: false
-  register: cryptopro_archive_stat
-
-- name: Fail when archive is missing
+- name: Fail when archive source is not provided
   ansible.builtin.fail:
     msg: >-
-      Архив КриптоПро CSP не найден: {{ cryptopro_archive_source }}.
-      Поместите TGZ-архив в artifacts/ или переопределите cryptopro_csp_archive_local.
-  when: not cryptopro_archive_stat.stat.exists
+      Укажите источник архива CryptoPro CSP: cryptopro_csp_archive_url
+      или cryptopro_csp_archive_path.
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) == 0
+    - (cryptopro_csp_archive_path | default('') | trim | length) == 0
+
+- name: Ensure temporary CryptoPro directory exists
+  ansible.builtin.file:
+    path: "{{ cryptopro_csp_remote_dir }}"
+    state: directory
+    mode: "0755"
+  check_mode: false
+
+- name: Set archive filename for downloaded package
+  ansible.builtin.set_fact:
+    cryptopro_csp_archive_filename: >-
+      {{
+        (cryptopro_csp_archive_url | urlsplit('path') | basename)
+        if (cryptopro_csp_archive_url | default('') | trim | length > 0)
+        else (cryptopro_csp_archive_path | basename)
+      }}
+  when: (cryptopro_csp_archive_url | default('') | trim | length) > 0
+
+- name: Download CryptoPro archive from URL with checksum
+  ansible.builtin.get_url:
+    url: "{{ cryptopro_csp_archive_url }}"
+    dest: "{{ cryptopro_csp_remote_dir }}/{{ cryptopro_csp_archive_filename | default('linux-amd64_deb.tgz') }}"
+    checksum: "{{ cryptopro_csp_archive_checksum }}"
+    headers: "{{ cryptopro_csp_archive_headers }}"
+    validate_certs: "{{ cryptopro_csp_download_validate_certs | bool }}"
+    mode: "0644"
+  register: cryptopro_csp_download_result
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) > 0
+    - (cryptopro_csp_archive_checksum | default('') | trim | length) > 0
+
+- name: Download CryptoPro archive from URL without checksum
+  ansible.builtin.get_url:
+    url: "{{ cryptopro_csp_archive_url }}"
+    dest: "{{ cryptopro_csp_remote_dir }}/{{ cryptopro_csp_archive_filename | default('linux-amd64_deb.tgz') }}"
+    headers: "{{ cryptopro_csp_archive_headers }}"
+    validate_certs: "{{ cryptopro_csp_download_validate_certs | bool }}"
+    mode: "0644"
+  register: cryptopro_csp_download_result
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) > 0
+    - (cryptopro_csp_archive_checksum | default('') | trim | length) == 0
+
+- name: Set downloaded archive path
+  ansible.builtin.set_fact:
+    cryptopro_csp_archive_src: "{{ cryptopro_csp_download_result.dest }}"
+    cryptopro_csp_archive_remote_src: true
+  when: (cryptopro_csp_archive_url | default('') | trim | length) > 0
+
+- name: Check CryptoPro archive on managed host
+  ansible.builtin.stat:
+    path: "{{ cryptopro_csp_archive_path }}"
+  register: cryptopro_csp_archive_path_remote_stat
+  when: (cryptopro_csp_archive_url | default('') | trim | length) == 0
+
+- name: Check CryptoPro archive on controller
+  ansible.builtin.stat:
+    path: "{{ cryptopro_csp_archive_path }}"
+  delegate_to: localhost
+  become: false
+  register: cryptopro_csp_archive_path_local_stat
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) == 0
+    - not (cryptopro_csp_archive_path_remote_stat.stat.exists | default(false))
+
+- name: Use archive path from managed host
+  ansible.builtin.set_fact:
+    cryptopro_csp_archive_src: "{{ cryptopro_csp_archive_path }}"
+    cryptopro_csp_archive_remote_src: true
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) == 0
+    - cryptopro_csp_archive_path_remote_stat.stat.exists | default(false)
+
+- name: Use archive path from controller
+  ansible.builtin.set_fact:
+    cryptopro_csp_archive_src: "{{ cryptopro_csp_archive_path }}"
+    cryptopro_csp_archive_remote_src: false
+  when:
+    - (cryptopro_csp_archive_url | default('') | trim | length) == 0
+    - not (cryptopro_csp_archive_path_remote_stat.stat.exists | default(false))
+    - cryptopro_csp_archive_path_local_stat.stat.exists | default(false)
+
+- name: Fail when archive file was not found
+  ansible.builtin.fail:
+    msg: >-
+      Архив CryptoPro CSP не найден. Проверьте cryptopro_csp_archive_path
+      или доступность cryptopro_csp_archive_url.
+  when: cryptopro_csp_archive_src is not defined
+
+- name: Verify downloaded archive exists
+  ansible.builtin.stat:
+    path: "{{ cryptopro_csp_archive_src }}"
+  register: cryptopro_csp_archive_final_stat
+  when: cryptopro_csp_archive_remote_src | bool
+
+- name: Fail when downloaded archive is missing
+  ansible.builtin.fail:
+    msg: >-
+      Архив CryptoPro CSP недоступен по пути {{ cryptopro_csp_archive_src }}
+      после скачивания или подготовки источника.
+  when:
+    - cryptopro_csp_archive_remote_src | bool
+    - not (cryptopro_csp_archive_final_stat.stat.exists | default(false))
 
 - name: Install required smartcard packages
   ansible.builtin.apt:
@@ -38,18 +125,11 @@
     state: present
   when: cryptopro_csp_install_libgost_astra
 
-- name: Ensure temporary CryptoPro directory exists
-  ansible.builtin.file:
-    path: "{{ cryptopro_csp_remote_dir }}"
-    state: directory
-    mode: "0755"
-  check_mode: false
-
 - name: Unpack CryptoPro archive
   ansible.builtin.unarchive:
-    src: "{{ cryptopro_archive_source }}"
+    src: "{{ cryptopro_csp_archive_src }}"
     dest: "{{ cryptopro_csp_remote_dir }}"
-    remote_src: false
+    remote_src: "{{ cryptopro_csp_archive_remote_src }}"
   check_mode: false
 
 - name: Locate installer script in unpacked archive
